@@ -859,7 +859,7 @@ public class Tests : TestsBase, ITest2
 
 	[MethodImplAttribute (MethodImplOptions.NoInlining)]
 	public void invoke1 (Tests2 t, AStruct s, GStruct<int> g) {
-		invoke2 ();
+		var intArray = new int[0]; invoke2 ();
 	}
 
 	[MethodImplAttribute (MethodImplOptions.NoInlining)]
@@ -959,8 +959,9 @@ public class Tests : TestsBase, ITest2
 		return 42;
 	}
 
-	public void invoke_out (out int foo) {
-		foo = 5;
+	public int invoke_out (int foo,out int[] arg) {
+		arg = new int[foo];
+		return foo;
 	}
 
 	[MethodImplAttribute (MethodImplOptions.NoInlining)]
