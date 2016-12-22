@@ -595,3 +595,136 @@ mono_ppdb_lookup_locals (MonoDebugMethodInfo *minfo)
 
 	return res;
 }
+
+/*
+* We use this to pass context information to the row locator
+*/
+typedef struct {
+	int idx;			/* The index that we are trying to locate */
+	int col_idx;		/* The index in the row where idx may be stored */
+	MonoTableInfo *t;	/* pointer to the table */
+	guint32 result;
+} locator_t;
+
+static int
+table_locator(const void *a, const void *b)
+{
+	locator_t *loc = (locator_t *)a;
+	const char *bb = (const char *)b;
+	guint32 table_index = (bb - loc->t->base) / loc->t->row_size;
+	guint32 col;
+
+	col = mono_metadata_decode_row_col(loc->t, table_index, loc->col_idx);
+
+	if (loc->idx == col) {
+		loc->result = table_index;
+		return 0;
+	}
+	if (loc->idx < col)
+		return -1;
+	else
+		return 1;
+}
+
+typedef gboolean(*GuidComparer) (const char *guid);
+
+gboolean is_async_method_stepping_information(guint8* debugInfoKindGuid)
+{
+	return debugInfoKindGuid[0] == 0xC5 &&
+		debugInfoKindGuid[1] == 0x2A &&
+		debugInfoKindGuid[2] == 0xFD &&
+		debugInfoKindGuid[3] == 0x54 &&
+		debugInfoKindGuid[4] == 0x25 &&
+		debugInfoKindGuid[5] == 0xE9 &&
+		debugInfoKindGuid[6] == 0x1A &&
+		debugInfoKindGuid[7] == 0x40 &&
+		debugInfoKindGuid[8] == 0x9C &&
+		debugInfoKindGuid[9] == 0x2A &&
+		debugInfoKindGuid[10] == 0xF9 &&
+		debugInfoKindGuid[11] == 0x4F &&
+		debugInfoKindGuid[12] == 0x17 &&
+		debugInfoKindGuid[13] == 0x10 &&
+		debugInfoKindGuid[14] == 0x72 &&
+		debugInfoKindGuid[15] == 0xF8;
+}
+
+const char* lookup_custom_debug_information(MonoImage* image, guint32 token, GuidComparer comparer)
+{
+	MonoTableInfo *tables = image->tables;
+	MonoTableInfo *table = &tables[MONO_TABLE_CUSTOMDEBUGINFORMATION];
+	locator_t loc;
+
+	if (!table->base)
+		return 0;
+
+	loc.idx = (mono_metadata_token_index(token) << 5) | 0; //TODO: Before accepting PR, this 0(MethodDef) must be replaced with proper values
+	loc.col_idx = MONO_CUSTOMDEBUGINFORMATION_PARENT;
+	loc.t = table;
+
+	if (!mono_binary_search(&loc, table->base, table->rows, table->row_size, table_locator))
+		return NULL;
+	// Great we found one of possibly many CustomDebugInformations on this entity they are distinguished by KIND guid
+	// Since we used binary search... First attempt on this index...(it's most likeley to be only 1)
+	if (comparer(mono_metadata_guid_heap(image, mono_metadata_decode_row_col(table, loc.result, MONO_CUSTOMDEBUGINFORMATION_KIND)))) {
+		return mono_metadata_blob_heap(image, mono_metadata_decode_row_col(table, loc.result, MONO_CUSTOMDEBUGINFORMATION_VALUE));
+	}
+	//TODO: MUST DO Going back and forward search for kind
+	// If we fail to find KIND we look for go back to 1st instance and then forward to last
+	// Notice that MONO_CUSTOMDEBUGINFORMATION_PARENT is sorted
+
+
+}
+
+static inline guint32
+read_encoded_int(guint8 *ptr, guint8 **rptr)
+{
+	guint32 result = 0, shift = 0;
+
+	while (TRUE) {
+		guint8 byte = *ptr++;
+
+		result |= (byte & 0x7f) << shift;
+		if ((byte & 0x80) == 0)
+			break;
+		shift += 7;
+	}
+
+	*rptr = ptr;
+	return result;
+}
+
+MonoDebugMethodAsyncInfo*
+mono_ppdb_lookup_method_async_debug_info(MonoDebugMethodInfo *minfo)
+{
+	MonoMethod *method = minfo->method;
+	MonoPPDBFile *ppdb = minfo->handle->ppdb;
+	MonoImage *image = ppdb->image;
+	char const* blob = lookup_custom_debug_information(image, method->token, is_async_method_stepping_information);
+	if (!blob)
+		return NULL;
+	int blob_len = mono_metadata_decode_blob_size(blob, &blob);
+	MonoDebugMethodAsyncInfo* res = g_new0(MonoDebugMethodAsyncInfo, 1);
+	char const* pointer = blob;
+	pointer += 4;//
+	while (pointer - blob < blob_len) {
+		res->num_awaits++;
+		pointer += 8;
+		while ((*pointer & 0x80) > 0)
+			pointer++;
+		pointer++;
+	}
+	g_assert(pointer - blob == blob_len); //Check that reading encoded int aligned with length
+	pointer = blob; //reset pointer
+
+	res->yieldOffsets = g_new(uint32_t, res->num_awaits);
+	res->resumeOffsets = g_new(uint32_t, res->num_awaits);
+	res->moveNextMethodToken = g_new(uint32_t, res->num_awaits);
+
+	res->catchHandlerOffset = read32(pointer); pointer += 4;
+	for (int i = 0; i < res->num_awaits; i++) {
+		res->yieldOffsets[i] = read32(pointer); pointer += 4;
+		res->resumeOffsets[i] = read32(pointer); pointer += 4;
+		res->moveNextMethodToken[i] = read_encoded_int(pointer, &pointer);
+	}
+	return res;
+}
