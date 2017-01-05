@@ -7547,14 +7547,14 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			}
 			g_free (sps);
 
-			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info(method);
+			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 			if (asyncMethod) {
 				for (i = 0; asyncMethod != NULL && i < asyncMethod->num_awaits; i++)
 				{
-					mono_bitset_set_fast(seq_point_locs, asyncMethod->resumeOffsets[i]);
-					mono_bitset_set_fast(seq_point_locs, asyncMethod->yieldOffsets[i]);
+					mono_bitset_set_fast (seq_point_locs, asyncMethod->resume_offsets[i]);
+					mono_bitset_set_fast (seq_point_locs, asyncMethod->yield_offsets[i]);
 				}
-				mono_debug_free_method_async_debug_info(asyncMethod);
+				mono_debug_free_method_async_debug_info (asyncMethod);
 			}
 		} else if (!method->wrapper_type && !method->dynamic && mono_debug_image_has_debug_info (method->klass->image)) {
 			/* Methods without line number info like auto-generated property accessors */

@@ -4531,19 +4531,19 @@ static void ss_calculate_framecount (DebuggerTlsData *tls, MonoContext *ctx)
 }
 
 static gboolean
-ensure_jit(StackFrame* frame)
+ensure_jit (StackFrame* frame)
 {
 	if (!frame->jit) {
-		frame->jit = mono_debug_find_method(frame->api_method, frame->domain);
+		frame->jit = mono_debug_find_method (frame->api_method, frame->domain);
 		if (!frame->jit && frame->api_method->is_inflated)
-			frame->jit = mono_debug_find_method(mono_method_get_declaring_generic_method(frame->api_method), frame->domain);
+			frame->jit = mono_debug_find_method(mono_method_get_declaring_generic_method (frame->api_method), frame->domain);
 		if (!frame->jit) {
 			char *s;
 
 			/* This could happen for aot images with no jit debug info */
-			s = mono_method_full_name(frame->api_method, TRUE);
+			s = mono_method_full_name (frame->api_method, TRUE);
 			DEBUG_PRINTF(1, "[dbg] No debug information found for '%s'.\n", s);
-			g_free(s);
+			g_free (s);
 			return FALSE;
 		}
 	}
@@ -4563,7 +4563,7 @@ ss_update (SingleStepReq *req, MonoJitInfo *ji, SeqPoint *sp, DebuggerTlsData *t
 	gboolean hit = TRUE;
 
 	if (req->async_stepout_method == method) {
-		DEBUG_PRINTF(1, "[%p] Breakpoint hit during async step-out at %s hit, continuing stepping out.\n", (gpointer)(gsize)mono_native_thread_id_get(), method->name);
+		DEBUG_PRINTF (1, "[%p] Breakpoint hit during async step-out at %s hit, continuing stepping out.\n", (gpointer)(gsize)mono_native_thread_id_get (), method->name);
 		return FALSE;
 	}
 
@@ -4598,16 +4598,16 @@ ss_update (SingleStepReq *req, MonoJitInfo *ji, SeqPoint *sp, DebuggerTlsData *t
 		}
 	}
 
-	MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info(method);
+	MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 	if (asyncMethod) {
 		for (int i = 0; i < asyncMethod->num_awaits; i++)
 		{
-			if (asyncMethod->yieldOffsets[i] == sp->il_offset || asyncMethod->resumeOffsets[i] == sp->il_offset) {
-				mono_debug_free_method_async_debug_info(asyncMethod);
+			if (asyncMethod->yield_offsets[i] == sp->il_offset || asyncMethod->resume_offsets[i] == sp->il_offset) {
+				mono_debug_free_method_async_debug_info (asyncMethod);
 				return FALSE;
 			}
 		}
-		mono_debug_free_method_async_debug_info(asyncMethod);
+		mono_debug_free_method_async_debug_info (asyncMethod);
 	}
 
 	if (req->size != STEP_SIZE_LINE)
@@ -4647,14 +4647,13 @@ breakpoint_matches_assembly (MonoBreakpoint *bp, MonoAssembly *assembly)
 }
 
 static MonoObject*
-get_this(StackFrame *frame)
-{
+get_this (StackFrame *frame) {
 	//Logic inspiered by "add_var" method and took out path that happens in async method for getting this
 	MonoDebugVarInfo *var = frame->jit->this_var;
 	if ((var->index & MONO_DEBUG_VAR_ADDRESS_MODE_FLAGS) != MONO_DEBUG_VAR_ADDRESS_MODE_REGOFFSET)
 		return NULL;
 
-	guint8 * addr = (guint8 *)mono_arch_context_get_int_reg(&frame->ctx, var->index & ~MONO_DEBUG_VAR_ADDRESS_MODE_FLAGS);
+	guint8 * addr = (guint8 *)mono_arch_context_get_int_reg (&frame->ctx, var->index & ~MONO_DEBUG_VAR_ADDRESS_MODE_FLAGS);
 	addr += (gint32)var->offset;
 	return *(MonoObject**)addr;
 }
@@ -4663,70 +4662,68 @@ get_this(StackFrame *frame)
 //since thread probably changed...
 static int
 get_this_async_id (StackFrame *frame) {
-	return get_objid(get_this(frame));
+	return get_objid (get_this (frame));
 }
 
 static void
-set_SetNotificationForWaitCompletion_flag(StackFrame *frame) {
-	MonoObject* obj = get_this(frame);
+set_SetNotificationForWaitCompletion_flag (StackFrame *frame) {
+	MonoObject* obj = get_this (frame);
 	if (obj == NULL)
 		return;
-	MonoClassField *builderField = mono_class_get_field_from_name(obj->vtable->klass, "<>t__builder");
+	MonoClassField *builderField = mono_class_get_field_from_name (obj->vtable->klass, "<>t__builder");
 	if (builderField == NULL) {
-		DEBUG_PRINTF(1, "[%p] Failed to get <>t__builder.\n", (gpointer)(gsize)mono_native_thread_id_get());
+		DEBUG_PRINTF (1, "[%p] Failed to get <>t__builder.\n", (gpointer)(gsize)mono_native_thread_id_get ());
 		return;
 	}
 	MonoObject* builder;
 	MonoError error;
-	builder = mono_field_get_value_object_checked(frame->domain, builderField, obj, &error);
+	builder = mono_field_get_value_object_checked (frame->domain, builderField, obj, &error);
 	if (builder == NULL) {
-		DEBUG_PRINTF(1, "[%p] Failed to get builder value: %s\n", (gpointer)(gsize)mono_native_thread_id_get(), mono_error_get_message(&error));
+		DEBUG_PRINTF (1, "[%p] Failed to get builder value: %s\n", (gpointer)(gsize)mono_native_thread_id_get (), mono_error_get_message (&error));
 		mono_error_cleanup (&error);
 		return;
 	}
-	GPtrArray* array = mono_class_get_methods_by_name(mono_class_from_mono_type(builderField->type), "SetNotificationForWaitCompletion", 0x24, FALSE, FALSE, &error);
-	if (!is_ok(&error)) {
-		DEBUG_PRINTF(1, "[%p] Failed to get SetNotificationForWaitCompletion method: %s.\n", (gpointer)(gsize)mono_native_thread_id_get(), mono_error_get_message(&error));
+	GPtrArray* array = mono_class_get_methods_by_name (mono_class_from_mono_type (builderField->type), "SetNotificationForWaitCompletion", 0x24, FALSE, FALSE, &error);
+	if (!is_ok (&error)) {
+		DEBUG_PRINTF (1, "[%p] Failed to get SetNotificationForWaitCompletion method: %s.\n", (gpointer)(gsize)mono_native_thread_id_get (), mono_error_get_message (&error));
 		mono_error_cleanup (&error);
 		return;
 	}
 	if (array->len != 1) {
-		DEBUG_PRINTF(1, "[%p] Failed to get SetNotificationForWaitCompletion got %d methods.\n", (gpointer)(gsize)mono_native_thread_id_get(), array->len);
+		DEBUG_PRINTF (1, "[%p] Failed to get SetNotificationForWaitCompletion got %d methods.\n", (gpointer)(gsize)mono_native_thread_id_get (), array->len);
 		return;
 	}
-	MonoMethod* setNotificationMethod = (MonoMethod *)g_ptr_array_index(array, 0);
-	g_ptr_array_free(array, TRUE);
-	void* args[1];
+	MonoMethod* setNotificationMethod = (MonoMethod *)g_ptr_array_index (array, 0);
+	g_ptr_array_free (array, TRUE);
+	void* args [1];
 	gboolean arg = TRUE;
-	args[0] = &arg;
-	mono_runtime_invoke_checked(setNotificationMethod, mono_object_unbox(builder), args, &error);
-	if (!is_ok(&error)) {
-		DEBUG_PRINTF(1, "[%p] Failed calling SetNotificationForWaitCompletion: %s.\n", (gpointer)(gsize)mono_native_thread_id_get(), mono_error_get_message(&error));
+	args [0] = &arg;
+	mono_runtime_invoke_checked (setNotificationMethod, mono_object_unbox (builder), args, &error);
+	if (!is_ok (&error)) {
+		DEBUG_PRINTF (1, "[%p] Failed calling SetNotificationForWaitCompletion: %s.\n", (gpointer)(gsize)mono_native_thread_id_get (), mono_error_get_message (&error));
 		mono_error_cleanup (&error);
 		return;
 	}
-	mono_field_set_value(obj, builderField, mono_object_unbox(builder));
+	mono_field_set_value (obj, builderField, mono_object_unbox (builder));
 }
 
 static MonoMethod*
-get_NotifyDebuggerOfWaitCompletion_method()
-{
+get_NotifyDebuggerOfWaitCompletion_method () {
 	MonoError error;
-	MonoClass* taskClass = mono_class_load_from_name(
+	MonoClass* taskClass = mono_class_load_from_name (
 		mono_defaults.corlib, "System.Threading.Tasks", "Task");
-	GPtrArray* array = mono_class_get_methods_by_name(taskClass, "NotifyDebuggerOfWaitCompletion", 0x24, FALSE, FALSE, &error);
-	if (!is_ok(&error))
-	{
-		DEBUG_PRINTF(1, "[%p] Failed to get NotifyDebuggerOfWaitCompletion method: %s.\n", (gpointer)(gsize)mono_native_thread_id_get(), mono_error_get_message(&error));
+	GPtrArray* array = mono_class_get_methods_by_name (taskClass, "NotifyDebuggerOfWaitCompletion", 0x24, FALSE, FALSE, &error);
+	if (!is_ok (&error)) {
+		DEBUG_PRINTF (1, "[%p] Failed to get NotifyDebuggerOfWaitCompletion method: %s.\n", (gpointer)(gsize)mono_native_thread_id_get (), mono_error_get_message (&error));
 		mono_error_cleanup (&error);
 		return NULL;
 	}
 	if (array->len != 1) {
-		DEBUG_PRINTF(1, "[%p] Failed to get NotifyDebuggerOfWaitCompletion got %d methods.\n", (gpointer)(gsize)mono_native_thread_id_get(), array->len);
+		DEBUG_PRINTF (1, "[%p] Failed to get NotifyDebuggerOfWaitCompletion got %d methods.\n", (gpointer)(gsize)mono_native_thread_id_get (), array->len);
 		return NULL;
 	}
-	MonoMethod* notifyDebuggerMethod = (MonoMethod *)g_ptr_array_index(array, 0);
-	g_ptr_array_free(array, TRUE);
+	MonoMethod* notifyDebuggerMethod = (MonoMethod *)g_ptr_array_index (array, 0);
+	g_ptr_array_free (array, TRUE);
 	return notifyDebuggerMethod;
 }
 
@@ -4819,7 +4816,7 @@ process_breakpoint_inner (DebuggerTlsData *tls, gboolean from_signal)
 		gboolean hit;
 
 		//if we hit async_stepout_method, it's our no matter which thread
-		if ((ss_req->async_stepout_method != method) && (ss_req->async_id || mono_thread_internal_current() != ss_req->thread)) {
+		if ((ss_req->async_stepout_method != method) && (ss_req->async_id || mono_thread_internal_current () != ss_req->thread)) {
 			//We have different thread and we don't have async stepping in progress
 			//it's breakpoint in parallel thread, ignore it
 			if (ss_req->async_id == 0)
@@ -4827,26 +4824,26 @@ process_breakpoint_inner (DebuggerTlsData *tls, gboolean from_signal)
 
 			ss_calculate_framecount(tls, ctx);
 			//make sure we have enough data to get current async method instance id
-			if (tls->frame_count == 0 || !ensure_jit(tls->frames[0]))
+			if (tls->frame_count == 0 || !ensure_jit (tls->frames [0]))
 				continue;
 
 			//Check method is async before calling get_this_async_id
-			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info(method);
+			MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 			if (!asyncMethod)
 				continue;
 			else
-				mono_debug_free_method_async_debug_info(asyncMethod);
+				mono_debug_free_method_async_debug_info (asyncMethod);
 
 			//breakpoint was hit in parallelly executing async method, ignore it
-			if (ss_req->async_id != get_this_async_id(tls->frames[0]))
+			if (ss_req->async_id != get_this_async_id (tls->frames [0]))
 				continue;
 		}
 
 		//Update stepping request to new thread/frame_count that we are continuing on
 		//so continuing with normal stepping works as expected
 		if (ss_req->async_stepout_method || ss_req->async_id) {
-			ss_calculate_framecount(tls, ctx);
-			ss_req->thread = mono_thread_internal_current();
+			ss_calculate_framecount (tls, ctx);
+			ss_req->thread = mono_thread_internal_current ();
 			ss_req->nframes = tls->frame_count;
 		}
 
@@ -5345,24 +5342,23 @@ ss_bp_add_one (SingleStepReq *ss_req, int *ss_req_bp_count, GHashTable **ss_req_
 }
 
 static gboolean
-is_last_non_empty(SeqPoint* sp, MonoSeqPointInfo *info)
-{
+is_last_non_empty (SeqPoint* sp, MonoSeqPointInfo *info) {
 	if (!sp->next_len)
 		return TRUE;
-	SeqPoint* next = g_new(SeqPoint, sp->next_len);
-	mono_seq_point_init_next(info, *sp, next);
+	SeqPoint* next = g_new (SeqPoint, sp->next_len);
+	mono_seq_point_init_next (info, *sp, next);
 	for (int i = 0; i < sp->next_len; i++) {
-		if (next[i].flags & MONO_SEQ_POINT_FLAG_NONEMPTY_STACK) {
-			if (!is_last_non_empty(&next[i], info)) {
-				g_free(next);
+		if (next [i].flags & MONO_SEQ_POINT_FLAG_NONEMPTY_STACK) {
+			if (!is_last_non_empty (&next [i], info)) {
+				g_free (next);
 				return FALSE;
 			}
 		} else {
-			g_free(next);
+			g_free (next);
 			return FALSE;
 		}
 	}
-	g_free(next);
+	g_free (next);
 	return TRUE;
 }
 
@@ -5426,39 +5422,39 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 			}
 		}
 
-		MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info(method);
-		if (asyncMethod && asyncMethod->num_awaits && nframes && ensure_jit(frames[0])) {
+		MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
+		if (asyncMethod && asyncMethod->num_awaits && nframes && ensure_jit (frames [0])) {
 			//asyncMethod has value and num_awaits > 0, this means we are inside async method with awaits
-			
-			// Check if we hit yieldOffset during normal stepping, because if we did...
+
+			// Check if we hit yield_offset during normal stepping, because if we did...
 			// Go into special async stepping mode which places breakpoint on resumeOffset
 			// of this await call and sets async_id so we can distinguish it from parallel executions
 			for (i = 0; i < asyncMethod->num_awaits; i++) {
-				if (sp->il_offset == asyncMethod->yieldOffsets[i]) {
-					ss_req->async_id = get_this_async_id(frames[0]);
-					ss_bp_add_one(ss_req, &ss_req_bp_count, &ss_req_bp_cache, method, asyncMethod->resumeOffsets[i]);
+				if (sp->il_offset == asyncMethod->yield_offsets [i]) {
+					ss_req->async_id = get_this_async_id (frames [0]);
+					ss_bp_add_one (ss_req, &ss_req_bp_count, &ss_req_bp_cache, method, asyncMethod->resume_offsets [i]);
 					if (ss_req_bp_cache)
-						g_hash_table_destroy(ss_req_bp_cache);
-					mono_debug_free_method_async_debug_info(asyncMethod);
+						g_hash_table_destroy (ss_req_bp_cache);
+					mono_debug_free_method_async_debug_info (asyncMethod);
 					return;
 				}
 			}
 			//If we are at end of async method and doing step-in or step-over... Switch to step-out, so whole NotifyDebuggerOfWaitCompletion magic happens...
-			if (is_last_non_empty(sp, info)) {
+			if (is_last_non_empty (sp, info)) {
 				ss_req->depth = STEP_DEPTH_OUT;//setting depth to step-out is important, don't inline IF, because code later depends on this
 			}
 			if (ss_req->depth == STEP_DEPTH_OUT) {
-				set_SetNotificationForWaitCompletion_flag(frames[0]);
-				ss_req->async_id = get_this_async_id(frames[0]);
-				ss_req->async_stepout_method = get_NotifyDebuggerOfWaitCompletion_method();
-				ss_bp_add_one(ss_req, &ss_req_bp_count, &ss_req_bp_cache, ss_req->async_stepout_method, 0);
+				set_SetNotificationForWaitCompletion_flag (frames [0]);
+				ss_req->async_id = get_this_async_id (frames [0]);
+				ss_req->async_stepout_method = get_NotifyDebuggerOfWaitCompletion_method ();
+				ss_bp_add_one (ss_req, &ss_req_bp_count, &ss_req_bp_cache, ss_req->async_stepout_method, 0);
 				if (ss_req_bp_cache)
-					g_hash_table_destroy(ss_req_bp_cache);
-				mono_debug_free_method_async_debug_info(asyncMethod);
+					g_hash_table_destroy (ss_req_bp_cache);
+				mono_debug_free_method_async_debug_info (asyncMethod);
 				return;
 			}
-		} else if(asyncMethod) {
-			mono_debug_free_method_async_debug_info(asyncMethod);
+		} else if (asyncMethod) {
+			mono_debug_free_method_async_debug_info (asyncMethod);
 		}
 
 		/*
@@ -9388,7 +9384,7 @@ frame_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 	if (!frame->has_ctx)
 		return ERR_ABSENT_INFORMATION;
 
-	if (!ensure_jit(frame))
+	if (!ensure_jit (frame))
 		return ERR_ABSENT_INFORMATION;
 
 	jit = frame->jit;

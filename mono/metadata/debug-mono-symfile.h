@@ -107,11 +107,11 @@ struct _MonoDebugLocalsInfo {
 * Information about method await yield and resume offsets retrieved from a symbol file.
 */
 struct _MonoDebugMethodAsyncInfo {
-	uint32_t catchHandlerOffset;
+	uint32_t catch_handler_offset;
 	int num_awaits;
-	uint32_t *yieldOffsets;
-	uint32_t *resumeOffsets;
-	uint32_t *moveNextMethodToken;
+	uint32_t *yield_offsets;
+	uint32_t *resume_offsets;
+	uint32_t *move_next_method_token;
 };
 
 struct _MonoDebugLineNumberEntry {

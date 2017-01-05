@@ -608,7 +608,7 @@ typedef struct {
 } locator_t;
 
 static int
-table_locator(const void *a, const void *b)
+table_locator (const void *a, const void *b)
 {
 	locator_t *loc = (locator_t *)a;
 	const char *bb = (const char *)b;
@@ -627,31 +627,31 @@ table_locator(const void *a, const void *b)
 		return 1;
 }
 
-typedef gboolean(*GuidComparer) (guint8* guid);
+typedef gboolean (*GuidComparer) (guint8* guid);
 static gboolean
-is_async_method_stepping_information_guid(guint8* debugInfoKindGuid)
+is_async_method_stepping_information_guid (guint8* debug_info_kind_guid)
 {
-	return debugInfoKindGuid[0] == 0xC5 &&
-		debugInfoKindGuid[1] == 0x2A &&
-		debugInfoKindGuid[2] == 0xFD &&
-		debugInfoKindGuid[3] == 0x54 &&
-		debugInfoKindGuid[4] == 0x25 &&
-		debugInfoKindGuid[5] == 0xE9 &&
-		debugInfoKindGuid[6] == 0x1A &&
-		debugInfoKindGuid[7] == 0x40 &&
-		debugInfoKindGuid[8] == 0x9C &&
-		debugInfoKindGuid[9] == 0x2A &&
-		debugInfoKindGuid[10] == 0xF9 &&
-		debugInfoKindGuid[11] == 0x4F &&
-		debugInfoKindGuid[12] == 0x17 &&
-		debugInfoKindGuid[13] == 0x10 &&
-		debugInfoKindGuid[14] == 0x72 &&
-		debugInfoKindGuid[15] == 0xF8;
+	return debug_info_kind_guid [0] == 0xC5 &&
+		debug_info_kind_guid [1] == 0x2A &&
+		debug_info_kind_guid [2] == 0xFD &&
+		debug_info_kind_guid [3] == 0x54 &&
+		debug_info_kind_guid [4] == 0x25 &&
+		debug_info_kind_guid [5] == 0xE9 &&
+		debug_info_kind_guid [6] == 0x1A &&
+		debug_info_kind_guid [7] == 0x40 &&
+		debug_info_kind_guid [8] == 0x9C &&
+		debug_info_kind_guid [9] == 0x2A &&
+		debug_info_kind_guid [10] == 0xF9 &&
+		debug_info_kind_guid [11] == 0x4F &&
+		debug_info_kind_guid [12] == 0x17 &&
+		debug_info_kind_guid [13] == 0x10 &&
+		debug_info_kind_guid [14] == 0x72 &&
+		debug_info_kind_guid [15] == 0xF8;
 }
 
 //for parent_type see HasCustomDebugInformation table at https://github.com/dotnet/roslyn/blob/2ae8d5fed96ab3f1164031f9b4ac827f53289159/docs/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37
 static const char*
-lookup_custom_debug_information(MonoImage* image, guint32 token, uint8_t parent_type, GuidComparer comparer)
+lookup_custom_debug_information (MonoImage* image, guint32 token, uint8_t parent_type, GuidComparer comparer)
 {
 	MonoTableInfo *tables = image->tables;
 	MonoTableInfo *table = &tables[MONO_TABLE_CUSTOMDEBUGINFORMATION];
@@ -660,70 +660,66 @@ lookup_custom_debug_information(MonoImage* image, guint32 token, uint8_t parent_
 	if (!table->base)
 		return 0;
 
-	loc.idx = (mono_metadata_token_index(token) << 5) | parent_type;
+	loc.idx = (mono_metadata_token_index (token) << 5) | parent_type;
 	loc.col_idx = MONO_CUSTOMDEBUGINFORMATION_PARENT;
 	loc.t = table;
 
-	if (!mono_binary_search(&loc, table->base, table->rows, table->row_size, table_locator))
+	if (!mono_binary_search (&loc, table->base, table->rows, table->row_size, table_locator))
 		return NULL;
 	// Great we found one of possibly many CustomDebugInformations of this entity they are distinguished by KIND guid
 	// First try on this index found by binary search...(it's most likeley to be only one and binary search found the one we want)
-	if (comparer((guint8*)mono_metadata_guid_heap(image, mono_metadata_decode_row_col(table, loc.result, MONO_CUSTOMDEBUGINFORMATION_KIND)))) {
-		return mono_metadata_blob_heap(image, mono_metadata_decode_row_col(table, loc.result, MONO_CUSTOMDEBUGINFORMATION_VALUE));
-	}
+	if (comparer ((guint8*)mono_metadata_guid_heap (image, mono_metadata_decode_row_col (table, loc.result, MONO_CUSTOMDEBUGINFORMATION_KIND))))
+		return mono_metadata_blob_heap (image, mono_metadata_decode_row_col (table, loc.result, MONO_CUSTOMDEBUGINFORMATION_VALUE));
 
 	// Move forward from binary found index, until parent token differs
 	for (int i = loc.result + 1; i < table->rows; i++)
 	{
-		if (mono_metadata_decode_row_col(table, i, MONO_CUSTOMDEBUGINFORMATION_PARENT) != loc.idx)
+		if (mono_metadata_decode_row_col (table, i, MONO_CUSTOMDEBUGINFORMATION_PARENT) != loc.idx)
 			break;
-		if (comparer((guint8*)mono_metadata_guid_heap(image, mono_metadata_decode_row_col(table, i, MONO_CUSTOMDEBUGINFORMATION_KIND)))) {
-			return mono_metadata_blob_heap(image, mono_metadata_decode_row_col(table, i, MONO_CUSTOMDEBUGINFORMATION_VALUE));
-		}
+		if (comparer ((guint8*)mono_metadata_guid_heap (image, mono_metadata_decode_row_col (table, i, MONO_CUSTOMDEBUGINFORMATION_KIND))))
+			return mono_metadata_blob_heap (image, mono_metadata_decode_row_col (table, i, MONO_CUSTOMDEBUGINFORMATION_VALUE));
 	}
 
 	// Move backward from binary found index, until parent token differs
-	for (int i = loc.result - 1; i >= 0; i--)
-	{
-		if (mono_metadata_decode_row_col(table, i, MONO_CUSTOMDEBUGINFORMATION_PARENT) != loc.idx)
+	for (int i = loc.result - 1; i >= 0; i--) {
+		if (mono_metadata_decode_row_col (table, i, MONO_CUSTOMDEBUGINFORMATION_PARENT) != loc.idx)
 			break;
-		if (comparer((guint8*)mono_metadata_guid_heap(image, mono_metadata_decode_row_col(table, i, MONO_CUSTOMDEBUGINFORMATION_KIND)))) {
-			return mono_metadata_blob_heap(image, mono_metadata_decode_row_col(table, i, MONO_CUSTOMDEBUGINFORMATION_VALUE));
-		}
+		if (comparer ((guint8*)mono_metadata_guid_heap (image, mono_metadata_decode_row_col (table, i, MONO_CUSTOMDEBUGINFORMATION_KIND))))
+			return mono_metadata_blob_heap (image, mono_metadata_decode_row_col (table, i, MONO_CUSTOMDEBUGINFORMATION_VALUE));
 	}
 	return NULL;
 }
 
 MonoDebugMethodAsyncInfo*
-mono_ppdb_lookup_method_async_debug_info(MonoDebugMethodInfo *minfo)
+mono_ppdb_lookup_method_async_debug_info (MonoDebugMethodInfo *minfo)
 {
 	MonoMethod *method = minfo->method;
 	MonoPPDBFile *ppdb = minfo->handle->ppdb;
 	MonoImage *image = ppdb->image;
-	char const *blob = lookup_custom_debug_information(image, method->token, 0, is_async_method_stepping_information_guid);
+	char const *blob = lookup_custom_debug_information (image, method->token, 0, is_async_method_stepping_information_guid);
 	if (!blob)
 		return NULL;
-	int blob_len = mono_metadata_decode_blob_size(blob, &blob);
-	MonoDebugMethodAsyncInfo* res = g_new0(MonoDebugMethodAsyncInfo, 1);
+	int blob_len = mono_metadata_decode_blob_size (blob, &blob);
+	MonoDebugMethodAsyncInfo* res = g_new0 (MonoDebugMethodAsyncInfo, 1);
 	char const *pointer = blob;
-	pointer += 4;//catchHandlerOffset
+	pointer += 4;//catch_handler_offset
 	while (pointer - blob < blob_len) {
 		res->num_awaits++;
-		pointer += 8;//yieldOffset+resumeOffset
-		mono_metadata_decode_value(pointer, &pointer);//moveNextMethodToken
+		pointer += 8;//yield_offsets+resume_offsets
+		mono_metadata_decode_value (pointer, &pointer);//move_next_method_token
 	}
 	g_assert(pointer - blob == blob_len); //Check that we used all blob data
 	pointer = blob; //reset pointer after we figured num_awaits
 
-	res->yieldOffsets = g_new(uint32_t, res->num_awaits);
-	res->resumeOffsets = g_new(uint32_t, res->num_awaits);
-	res->moveNextMethodToken = g_new(uint32_t, res->num_awaits);
+	res->yield_offsets = g_new (uint32_t, res->num_awaits);
+	res->resume_offsets = g_new (uint32_t, res->num_awaits);
+	res->move_next_method_token = g_new (uint32_t, res->num_awaits);
 
-	res->catchHandlerOffset = read32(pointer); pointer += 4;
+	res->catch_handler_offset = read32 (pointer); pointer += 4;
 	for (int i = 0; i < res->num_awaits; i++) {
-		res->yieldOffsets[i] = read32(pointer); pointer += 4;
-		res->resumeOffsets[i] = read32(pointer); pointer += 4;
-		res->moveNextMethodToken[i] = mono_metadata_decode_value(pointer, &pointer);
+		res->yield_offsets [i] = read32 (pointer); pointer += 4;
+		res->resume_offsets [i] = read32 (pointer); pointer += 4;
+		res->move_next_method_token [i] = mono_metadata_decode_value (pointer, &pointer);
 	}
 	return res;
 }
