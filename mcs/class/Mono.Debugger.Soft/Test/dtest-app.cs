@@ -432,6 +432,7 @@ public class Tests : TestsBase, ITest2
 		ss_recursive_chaotic ();
 		ss_fp_clobber ();
 		ss_no_frames ();
+		Console.WriteLine(typeof(Tests).Assembly.FullName);
 		ss_await ();
 	}
 
