@@ -607,24 +607,35 @@ public class DebuggerTests
 		// If we got this far, we're good.
 	}
 
+	Event step_over_await(string method, Event e)
+	{
+		create_step (e);
+		step_req.AssemblyFilter = new List<AssemblyMirror> () { entry_point.DeclaringType.Assembly };
+		var ef=step_into ();
+		assert_location (ef, method);
+		return ef;
+	}
+
 	[Test]
 	public void SingleStepping () {
 		
-		var e = run_until ("ss_await");
+		Event e = run_until ("ss_await");
 		create_step (e);
 		step_req.AssemblyFilter = new List<AssemblyMirror> () { entry_point.DeclaringType.Assembly };
-		assert_location (step_into (), "ss_await");
-		assert_location (step_into (), "MoveNext");
-		assert_location (step_over (), "MoveNext");
-		assert_location (step_over (), "MoveNext");
-		var bla=step_over ();
-		assert_location (bla, "MoveNext");
+		e=step_into ();
+		assert_location (e, "ss_await");
+		e=step_into ();
+		assert_location (e, "MoveNext");
+		e=step_over_await("MoveNext",e);
+		e=step_over_await("MoveNext",e);
+		e=step_over_await("MoveNext",e);
+		var ga = e.Thread.GetFrames () [0].GetThis();
+		e=step_over_await("MoveNext",e);
 
-		var ga = bla.Thread.GetFrames () [0].GetThis();
 
-		assert_location (step_over (), "MoveNext");
-		assert_location (step_over (), "MoveNext");
-		assert_location (step_over (), "MoveNext");
+		e=step_over_await("MoveNext",e);
+		e=step_over_await("MoveNext",e);
+		e=step_over_await("MoveNext",e);
 		assert_location (step_into (), "ss_await");
 		assert_location (step_into (), "ss_await");
 		assert_location (step_into (), "ss_await");
