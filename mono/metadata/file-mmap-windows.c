@@ -109,9 +109,9 @@ static int get_file_map_access (int access)
 	case MMAP_FILE_ACCESS_COPY_ON_WRITE:
 		return FILE_MAP_COPY;
 	case MMAP_FILE_ACCESS_READ_EXECUTE:
-		return FILE_MAP_EXECUTE | FILE_MAP_READ;
+		return 0x0020 | FILE_MAP_READ;
 	case MMAP_FILE_ACCESS_READ_WRITE_EXECUTE:
-		return FILE_MAP_EXECUTE | FILE_MAP_READ | FILE_MAP_WRITE;
+		return 0x0020 | FILE_MAP_READ | FILE_MAP_WRITE;
 	default:
 		g_error ("unknown MemoryMappedFileAccess %d", access);
 	}
