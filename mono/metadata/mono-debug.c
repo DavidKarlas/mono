@@ -858,7 +858,7 @@ MonoDebugMethodAsyncInfo*
 mono_debug_lookup_method_async_debug_info (MonoMethod *method)
 {
 	MonoDebugMethodInfo *minfo;
-	MonoDebugMethodAsyncInfo *res;
+	MonoDebugMethodAsyncInfo *res = NULL;
 
 	if (mono_debug_format == MONO_DEBUG_FORMAT_NONE)
 		return NULL;
