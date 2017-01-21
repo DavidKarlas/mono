@@ -65,7 +65,7 @@ public class DebuggerTests
 
 	void Start (bool forceExit, params string[] args) {
 		this.forceExit = forceExit;
-		listening=true;
+		//listening=true;
 		if (!listening) {
 			var pi = new Diag.ProcessStartInfo ();
 
@@ -607,8 +607,10 @@ public class DebuggerTests
 		// If we got this far, we're good.
 	}
 
-	Event step_over_await(string method, Event e)
+	Event step_in_await(string method, Event e)
 	{
+		if (step_req != null)
+			step_req.Disable();
 		create_step (e);
 		step_req.AssemblyFilter = new List<AssemblyMirror> () { entry_point.DeclaringType.Assembly };
 		var ef=step_into ();
@@ -616,31 +618,65 @@ public class DebuggerTests
 		return ef;
 	}
 
-	[Test]
-	public void SingleStepping () {
-		
-		Event e = run_until ("ss_await");
+	Event step_over_await(string method, Event e)
+	{
+		if (step_req != null)
+			step_req.Disable();
 		create_step (e);
 		step_req.AssemblyFilter = new List<AssemblyMirror> () { entry_point.DeclaringType.Assembly };
-		e=step_into ();
-		assert_location (e, "ss_await");
-		e=step_into ();
-		assert_location (e, "MoveNext");
-		e=step_over_await("MoveNext",e);
-		e=step_over_await("MoveNext",e);
-		e=step_over_await("MoveNext",e);
-		var ga = e.Thread.GetFrames () [0].GetThis();
-		e=step_over_await("MoveNext",e);
-
-
-		e=step_over_await("MoveNext",e);
-		e=step_over_await("MoveNext",e);
-		e=step_over_await("MoveNext",e);
-		assert_location (step_into (), "ss_await");
-		assert_location (step_into (), "ss_await");
-		assert_location (step_into (), "ss_await");
-		assert_location (step_into (), "ss_await");
+		var ef=step_over ();
+		assert_location (ef, method);
+		return ef;
 	}
+
+	Event step_out_await(string method, Event e)
+	{
+		if (step_req != null)
+			step_req.Disable();
+		create_step (e);
+		step_req.AssemblyFilter = new List<AssemblyMirror> () { entry_point.DeclaringType.Assembly };
+		var ef=step_out ();
+		assert_location (ef, method);
+		return ef;
+	}
+
+		[Test]
+		public void SingleStepping () {
+			
+			Event e = run_until ("ss_await");
+			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//in
+			e=step_in_await("MoveNext",e);//{
+			e=step_in_await("MoveNext",e);//var a = 1;
+			e=step_in_await("MoveNext",e);//await Task.Delay (20);
+			e=step_in_await("MoveNext",e);//return a + 2;
+			e=step_in_await("MoveNext",e);//}
+			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//in
+
+			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//over
+			e=step_in_await ("MoveNext", e);//{
+			e=step_over_await("MoveNext",e);//var a = 1;
+			e=step_over_await("MoveNext",e);//await Task.Delay (20);
+			e=step_over_await("MoveNext",e);//return a + 2;
+			e=step_over_await("MoveNext",e);//}
+			e=step_over_await("ss_await",e);//ss_await_1 ().Wait ();//over
+
+			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//out before
+			e=step_in_await ("MoveNext", e);//{
+			e=step_out_await("ss_await", e);//ss_await_1 ().Wait ();//out before
+
+			e=step_in_await ("MoveNext", e);//ss_await_1 ().Wait ();//out after
+			e=step_in_await ("MoveNext", e);//{
+			e=step_in_await("MoveNext",e);//var a = 1;
+			e=step_in_await("MoveNext",e);//await Task.Delay (20);
+			e=step_in_await("MoveNext",e);//return a + 2;
+			e=step_out_await("ss_await", e);//ss_await_1 ().Wait ();//out after
+
+
+			
+
+
+
+		}
 
 	[Test]
 	public void SingleSteppingNoFrames () {
