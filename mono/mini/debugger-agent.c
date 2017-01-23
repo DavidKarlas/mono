@@ -4822,6 +4822,9 @@ process_breakpoint_inner (DebuggerTlsData *tls, gboolean from_signal)
 			if (ss_req->async_id == 0)
 				continue;
 
+			tls->context.valid = FALSE;
+			tls->async_state.valid = FALSE;
+			invalidate_frames (tls);
 			ss_calculate_framecount(tls, ctx);
 			//make sure we have enough data to get current async method instance id
 			if (tls->frame_count == 0 || !ensure_jit (tls->frames [0]))
@@ -4842,6 +4845,9 @@ process_breakpoint_inner (DebuggerTlsData *tls, gboolean from_signal)
 		//Update stepping request to new thread/frame_count that we are continuing on
 		//so continuing with normal stepping works as expected
 		if (ss_req->async_stepout_method || ss_req->async_id) {
+			tls->context.valid = FALSE;
+			tls->async_state.valid = FALSE;
+			invalidate_frames (tls);
 			ss_calculate_framecount (tls, ctx);
 			ss_req->thread = mono_thread_internal_current ();
 			ss_req->nframes = tls->frame_count;
@@ -5372,7 +5378,7 @@ is_last_non_empty (SeqPoint* sp, MonoSeqPointInfo *info) {
  */
 static void
 ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointInfo *info, MonoContext *ctx, DebuggerTlsData *tls,
-		  gboolean step_to_catch, StackFrame **frames, int nframes)
+	gboolean step_to_catch, StackFrame **frames, int nframes)
 {
 	int i, j, frame_index;
 	SeqPoint *next_sp, *parent_sp = NULL;
@@ -5407,6 +5413,8 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 			nframes = tls->frame_count;
 		}
 
+		MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
+
 		/* Need to stop in catch clauses as well */
 		for (i = ss_req->depth == STEP_DEPTH_OUT ? 1 : 0; i < nframes; ++i) {
 			StackFrame *frame = frames [i];
@@ -5414,6 +5422,9 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 			if (frame->ji) {
 				MonoJitInfo *jinfo = frame->ji;
 				for (j = 0; j < jinfo->num_clauses; ++j) {
+					// In case of async method we don't want to place breakpoint on last catch handler(which state machine added for whole method)
+					if (asyncMethod && asyncMethod->num_awaits && i == 0 && j + 1 == jinfo->num_clauses)
+						break;
 					MonoJitExceptionInfo *ei = &jinfo->clauses [j];
 
 					if (mono_find_next_seq_point_for_native_offset (frame->domain, frame->method, (char*)ei->handler_start - (char*)jinfo->code_start, NULL, &local_sp))
@@ -5422,7 +5433,6 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 			}
 		}
 
-		MonoDebugMethodAsyncInfo* asyncMethod = mono_debug_lookup_method_async_debug_info (method);
 		if (asyncMethod && asyncMethod->num_awaits && nframes && ensure_jit (frames [0])) {
 			//asyncMethod has value and num_awaits > 0, this means we are inside async method with awaits
 
@@ -5439,7 +5449,8 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 					return;
 				}
 			}
-			//If we are at end of async method and doing step-in or step-over... Switch to step-out, so whole NotifyDebuggerOfWaitCompletion magic happens...
+			//If we are at end of async method and doing step-in or step-over...
+			//Switch to step-out, so whole NotifyDebuggerOfWaitCompletion magic happens...
 			if (is_last_non_empty (sp, info)) {
 				ss_req->depth = STEP_DEPTH_OUT;//setting depth to step-out is important, don't inline IF, because code later depends on this
 			}
@@ -5453,14 +5464,15 @@ ss_start (SingleStepReq *ss_req, MonoMethod *method, SeqPoint* sp, MonoSeqPointI
 				mono_debug_free_method_async_debug_info (asyncMethod);
 				return;
 			}
-		} else if (asyncMethod) {
-			mono_debug_free_method_async_debug_info (asyncMethod);
 		}
 
+		if (asyncMethod)
+			mono_debug_free_method_async_debug_info (asyncMethod);
+
 		/*
-		 * Find the first sequence point in the current or in a previous frame which
-		 * is not the last in its method.
-		 */
+		* Find the first sequence point in the current or in a previous frame which
+		* is not the last in its method.
+		*/
 		if (ss_req->depth == STEP_DEPTH_OUT) {
 			/* Ignore seq points in current method */
 			while (frame_index < nframes) {

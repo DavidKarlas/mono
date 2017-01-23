@@ -65,7 +65,6 @@ public class DebuggerTests
 
 	void Start (bool forceExit, params string[] args) {
 		this.forceExit = forceExit;
-		//listening=true;
 		if (!listening) {
 			var pi = new Diag.ProcessStartInfo ();
 
@@ -528,6 +527,7 @@ public class DebuggerTests
 	// Assert we have stepped to a location
 	void assert_location (Event e, string method) {
 		Assert.IsTrue (e is StepEvent);
+		Console.WriteLine("0x"+e.Thread.GetFrames ()[0].Location.ILOffset.ToString("X"));
 		Assert.AreEqual (method, (e as StepEvent).Method.Name);
 	}
 
@@ -647,15 +647,15 @@ public class DebuggerTests
 			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//in
 			e=step_in_await("MoveNext",e);//{
 			e=step_in_await("MoveNext",e);//var a = 1;
-			e=step_in_await("MoveNext",e);//await Task.Delay (20);
+			e=step_in_await("MoveNext",e);//await Task.Delay (10);
 			e=step_in_await("MoveNext",e);//return a + 2;
 			e=step_in_await("MoveNext",e);//}
 			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//in
-
+			
 			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//over
 			e=step_in_await ("MoveNext", e);//{
 			e=step_over_await("MoveNext",e);//var a = 1;
-			e=step_over_await("MoveNext",e);//await Task.Delay (20);
+			e=step_over_await("MoveNext",e);//await Task.Delay (10);
 			e=step_over_await("MoveNext",e);//return a + 2;
 			e=step_over_await("MoveNext",e);//}
 			e=step_over_await("ss_await",e);//ss_await_1 ().Wait ();//over
@@ -664,18 +664,88 @@ public class DebuggerTests
 			e=step_in_await ("MoveNext", e);//{
 			e=step_out_await("ss_await", e);//ss_await_1 ().Wait ();//out before
 
-			e=step_in_await ("MoveNext", e);//ss_await_1 ().Wait ();//out after
+			e=step_in_await ("ss_await", e);//ss_await_1 ().Wait ();//out after
 			e=step_in_await ("MoveNext", e);//{
 			e=step_in_await("MoveNext",e);//var a = 1;
-			e=step_in_await("MoveNext",e);//await Task.Delay (20);
+			e=step_in_await("MoveNext",e);//await Task.Delay (10);
 			e=step_in_await("MoveNext",e);//return a + 2;
 			e=step_out_await("ss_await", e);//ss_await_1 ().Wait ();//out after
 
-
+			e=step_in_await ("ss_await", e);//ss_await_1_exc (true, true).Wait ();//in
+			e=step_in_await ("MoveNext", e);//{
+			e=step_in_await("MoveNext",e);//var a = 1;
+			e=step_in_await("MoveNext",e);//await Task.Delay (10);
+			e=step_in_await("MoveNext",e);//if (exc)
+			e=step_in_await("MoveNext",e);//{
+			e=step_in_await("MoveNext",e);//if (handled)
+			e=step_in_await("MoveNext",e);//{
+			e=step_in_await("MoveNext",e);//try {
+			e=step_in_await("MoveNext",e);//throw new Exception ();
+			e=step_in_await("MoveNext",e);//catch
+			e=step_in_await("MoveNext",e);//{
+			e=step_in_await("MoveNext",e);//}
+			e=step_in_await("MoveNext",e);//}
+			e=step_in_await("MoveNext",e);//}
+			e=step_in_await("MoveNext",e);//return a + 2;
+			e=step_in_await("MoveNext",e);//}
+			e=step_in_await("ss_await",e);//ss_await_1_exc (true, true).Wait ();//in
 			
+			e=step_in_await ("ss_await", e);//ss_await_1_exc (true, true).Wait ();//over
+			e=step_in_await ("MoveNext", e);//{
+			e=step_over_await("MoveNext",e);//var a = 1;
+			e=step_over_await("MoveNext",e);//await Task.Delay (10);
+			e=step_over_await("MoveNext",e);//if (exc)
+			e=step_over_await("MoveNext",e);//{
+			e=step_over_await("MoveNext",e);//if (handled)
+			e=step_over_await("MoveNext",e);//{
+			e=step_over_await("MoveNext",e);//try {
+			e=step_over_await("MoveNext",e);//throw new Exception ();
+			e=step_over_await("MoveNext",e);//catch
+			e=step_over_await("MoveNext",e);//{
+			e=step_over_await("MoveNext",e);//}
+			e=step_over_await("MoveNext",e);//}
+			e=step_over_await("MoveNext",e);//}
+			e=step_over_await("MoveNext",e);//return a + 2;
+			e=step_over_await("MoveNext",e);//}
+			e=step_over_await("ss_await",e);//ss_await_1_exc (true, true).Wait ();//over
+			
+			e=step_in_await ("ss_await", e);//ss_await_1_exc (true, true).Wait ();//out
+			e=step_in_await ("MoveNext", e);//{
+			e=step_out_await ("ss_await", e);//ss_await_1_exc (true, true).Wait ();//out
 
+			e=step_in_await ("ss_await", e);//try {
+			e=step_in_await ("ss_await", e);//ss_await_1_exc (true, false).Wait ();//in
+			e=step_in_await ("MoveNext", e);//{
+			e=step_in_await("MoveNext",e);//var a = 1;
+			e=step_in_await("MoveNext",e);//await Task.Delay (10);
+			e=step_in_await("MoveNext",e);//if (exc)
+			e=step_in_await("MoveNext",e);//{
+			e=step_in_await("MoveNext",e);//if (handled)
+			e=step_in_await("MoveNext",e);//} else {
+			e=step_in_await("MoveNext",e);//throw new Exception ();
+			e=step_in_await("ss_await",e);//catch
+			e=step_in_await("ss_await",e);//{
+			e=step_in_await("ss_await",e);//}
+			e=step_in_await("ss_await",e);//try {
 
+			e=step_in_await("ss_await",e);//ss_await_1_exc (true, false).Wait ();//over
+			e=step_in_await ("MoveNext", e);//{
+			e=step_over_await("MoveNext",e);//var a = 1;
+			e=step_over_await("MoveNext",e);//await Task.Delay (10);
+			e=step_over_await("MoveNext",e);//if (exc)
+			e=step_over_await("MoveNext",e);//{
+			e=step_over_await("MoveNext",e);//if (handled)
+			e=step_over_await("MoveNext",e);//} else {
+			e=step_over_await("MoveNext",e);//throw new Exception ();
+			e=step_over_await("ss_await",e);//catch
+			e=step_over_await("ss_await",e);//{
+			e=step_over_await("ss_await",e);//}
+			e=step_over_await("ss_await",e);//try {
 
+			e=step_in_await("ss_await",e);//ss_await_1_exc (true, false).Wait ();//out
+			e=step_in_await ("MoveNext", e);//{
+			e=step_out_await ("ss_await", e);//ss_await_1_exc (true, true).Wait ();//out
+			
 		}
 
 	[Test]

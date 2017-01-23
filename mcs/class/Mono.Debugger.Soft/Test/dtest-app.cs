@@ -744,7 +744,7 @@ public class Tests : TestsBase, ITest2
 	[MethodImplAttribute (MethodImplOptions.NoInlining)]
 	public static async Task<int> ss_await_1 () {
 		var a = 1;
-		await Task.Delay (20);
+		await Task.Delay (10);
 		return a + 2;
 	}
 
@@ -752,7 +752,7 @@ public class Tests : TestsBase, ITest2
 	public static async Task<int> ss_await_1_exc (bool exc, bool handled)
 	{
 		var a = 1;
-		await Task.Delay (20);
+		await Task.Delay (10);
 		if (exc) {
 			if (handled) {
 				try {
