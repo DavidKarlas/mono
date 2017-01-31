@@ -958,17 +958,20 @@ mono_metadata_compute_size (MonoImage *meta, int tableindex, guint32 *result_bit
 /**
  * mono_metadata_compute_table_bases:
  * @meta: metadata context to compute table values
+ * @start_table: standalone pdb can have tables->rows set also for tables which are not part
+ * of metadata, this rows are set just so we can calculate table->row_size correctly
+ * but we may not use this rows for calculating table->base, hence we need this argument
  *
  * Computes the table bases for the metadata structure.
  * This is an internal function used by the image loader code.
  */
 void
-mono_metadata_compute_table_bases (MonoImage *meta)
+mono_metadata_compute_table_bases (MonoImage *meta, int start_table)
 {
 	int i;
 	const char *base = meta->tables_base;
 	
-	for (i = 0; i < MONO_TABLE_NUM; i++) {
+	for (i = start_table; i < MONO_TABLE_NUM; i++) {
 		MonoTableInfo *table = &meta->tables [i];
 		if (table->rows == 0)
 			continue;

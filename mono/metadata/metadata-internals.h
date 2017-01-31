@@ -721,7 +721,7 @@ MONO_API void
 mono_metadata_cleanup (void);
 
 const char *   mono_meta_table_name              (int table);
-void           mono_metadata_compute_table_bases (MonoImage *meta);
+void           mono_metadata_compute_table_bases (MonoImage *meta, MonoMetaTableEnum start_table);
 
 gboolean
 mono_metadata_interfaces_from_typedef_full  (MonoImage             *image,

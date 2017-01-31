@@ -594,7 +594,32 @@ load_tables (MonoImage *image)
 	/* They must be the same */
 	g_assert ((const void *) image->tables_base == (const void *) rows);
 
-	mono_metadata_compute_table_bases (image);
+	if (image->heap_pdb.data) {
+		guint64 referenced_tables = read64 (image->heap_pdb.data + 20/*pdb guid*/ + 4/*entry_point*/);
+		rows = (const guint32 *)(image->heap_pdb.data + 20/*pdb guid*/ + 4/*entry_point*/ + 8/*referenced_tables*/);
+		for (table = 0; table < MONO_TABLE_DOCUMENT; table++) {
+			if ((referenced_tables & ((guint64)1 << table)) == 0) {
+				if (table > MONO_TABLE_LAST)
+					continue;
+				image->tables [table].rows = 0;
+				continue;
+			}
+			if (table > MONO_TABLE_LAST) {
+				g_warning ("bits in valid must be zero above 0x37 (II - 23.1.6)");
+			} else {
+				image->tables [table].rows = read32 (rows);
+			}
+			rows++;
+		}
+		mono_metadata_compute_table_bases (image, MONO_TABLE_DOCUMENT);
+		// We calculated row_sizes, now put rows back to 0, otherwise methods think
+		// we have valid tables, e.g. mono_image_load_names
+		for (table = 0; table < MONO_TABLE_DOCUMENT; table++) {
+			image->tables [table].rows = 0;
+		}
+	} else {
+		mono_metadata_compute_table_bases (image, MONO_TABLE_MODULE);
+	}
 	return TRUE;
 }
 
