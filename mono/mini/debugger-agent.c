@@ -9061,8 +9061,8 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 					/* Scopes for hoisted locals */
 					buffer_add_int (buf, locals->num_hoisted);
 					for (i = 0; i < locals->num_hoisted; ++i) {
-						buffer_add_int (buf, locals->code_blocks [i].start_offset);
-						buffer_add_int (buf, locals->code_blocks [i].end_offset);
+						buffer_add_int (buf, locals->hoisted [i].start_offset);
+						buffer_add_int (buf, locals->hoisted [i].end_offset);
 					}
 				}
 			}

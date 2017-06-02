@@ -618,14 +618,14 @@ mono_ppdb_lookup_locals (MonoDebugMethodInfo *minfo)
 	if (blob) {
 		const char *ptr = blob;
 		int size = mono_metadata_decode_blob_size (ptr, &ptr);
-		g_assert (size % 4 == 0);
-		size /= 4;
+		g_assert (size % 8 == 0);
+		size /= 8;
 		res->num_hoisted = size;
 		res->hoisted = g_new0 (MonoHoistedLocalScope, res->num_hoisted);
 		for (int hindex = 0; hindex < size; ++hindex) {
-			res->hoisted [hindex].start_offset = read16 (ptr);
+			res->hoisted [hindex].start_offset = read32 (ptr);
 			ptr += 4;
-			res->hoisted [hindex].end_offset = res->hoisted [hindex].start_offset + read16 (ptr);
+			res->hoisted [hindex].end_offset = res->hoisted [hindex].start_offset + read32 (ptr);
 			ptr += 4;
 		}
 	}
