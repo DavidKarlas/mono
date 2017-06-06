@@ -2625,6 +2625,16 @@ public class DebuggerTests
 		AssertValue (0, s.Fields [0]);
 		AssertValue (false, s.Fields [1]);
 
+        // pass nullable<int> int
+        m = t.GetMethod ("invoke_pass_nullable");
+        v = this_obj.InvokeMethod (e.Thread, m, new Value [] {vm.CreateValue ((int)5)});
+        AssertValue (false, v);
+
+        // pass nullable<int> null
+        m = t.GetMethod ("invoke_pass_nullable");
+        v = this_obj.InvokeMethod (e.Thread, m, new Value [] {vm.CreateValue (null)});
+        AssertValue (true, v);
+
 		// pass nullable as this
 		//m = vm.RootDomain.Corlib.GetType ("System.Object").GetMethod ("ToString");
 		m = s.Type.GetMethod ("ToString");

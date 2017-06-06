@@ -1176,6 +1176,10 @@ public class Tests : TestsBase, ITest2
 	class Class3 {
 	}
 
+    public bool invoke_pass_nullable (int? arg) {
+        return arg.HasValue;
+    }
+
 	public long invoke_pass_primitive (byte ub, sbyte sb, short ss, ushort us, int i, uint ui, long l, ulong ul, char c, bool b, float f, double d) {
 		return ub + sb + ss + us + i + ui + l + (long)ul + (int)c + (b ? 1 : 0) + (int)f + (int)d;
 	}
